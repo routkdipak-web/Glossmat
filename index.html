@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070C11">
+<title>GLOSSMAT</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{--gd:#C9A45C;--bg:#EEF2F5;--card:#fff;--ink:#101923;--mut:#5d6b78;--line:#d8e0e6;--ac:#0E7C9B;--acs:#dff1f6;--ok:#1b8a5a;--bad:#c63d3d;--warn:#b7791f}
+@media(prefers-color-scheme:dark){:root{--bg:#0A1118;--card:#131D28;--ink:#E8EEF3;--mut:#91a1b0;--line:#25323f;--ac:#5CCBE6;--acs:#12303a;--ok:#4cc790;--bad:#ff7a7a;--warn:#e3b04b}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Sora,system-ui,sans-serif;padding:env(safe-area-inset-top,0) 0 calc(84px + env(safe-area-inset-bottom,0))}
+header{background:linear-gradient(135deg,#070C11,#12303a);color:#fff;padding:22px 18px 18px;position:sticky;top:0;z-index:5;border-bottom:2px solid var(--gd)}
+header b{font:700 25px 'Playfair Display',Georgia,serif;letter-spacing:.6px;color:var(--gd)}
+header small{display:block;color:#9fb3c2;font-size:12px}
+#sync{float:right;font-size:11px;color:#9fb3c2;margin-top:4px}
+main{padding:14px;max-width:720px;margin:auto}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0);z-index:6}
+nav button{flex:1;border:0;background:none;color:var(--mut);padding:12px 2px;font:600 12px Sora;cursor:pointer}
+nav button.on{color:var(--ac);box-shadow:inset 0 3px 0 var(--ac)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;margin:12px 0;box-shadow:0 8px 24px -14px rgba(14,26,38,.35)}
+h2{font:600 22px 'Playfair Display',Georgia,serif;margin:4px 0 10px}h3{font-size:14px;margin:14px 0 6px;color:var(--ac)}
+input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;margin:3px 0 8px}
+label{font-size:12px;color:var(--mut)}
+.btn{border:0;border-radius:10px;padding:11px 14px;font:600 14px Sora;background:var(--ac);color:#fff;cursor:pointer}
+@media(prefers-color-scheme:dark){.btn{color:#06222b}}
+.btn.g{background:var(--acs);color:var(--ac)}.btn.r{background:none;color:var(--bad);border:1px solid var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:1}.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}
+.emp{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}.emp:last-child{border:0}
+.emp .n{flex:1.3}.emp .n small{display:block;color:var(--mut);font-size:11px}
+.seg{display:flex;gap:4px}.seg button{border:1px solid var(--line);background:var(--bg);color:var(--mut);border-radius:8px;padding:8px 10px;font:600 13px Sora;cursor:pointer}
+.seg .P.on{background:var(--ok);color:#fff;border-color:var(--ok)}.seg .A.on{background:var(--bad);color:#fff;border-color:var(--bad)}.seg .O.on{background:var(--warn);color:#fff;border-color:var(--warn)}
+.bad{color:var(--bad)}.ok{color:var(--ok)}.mut{color:var(--mut);font-size:12px}
+.job{cursor:pointer}.job .t{display:flex;justify-content:space-between;gap:8px;font-weight:600}
+.pill{display:inline-block;background:var(--acs);color:var(--ac);border-radius:20px;padding:2px 9px;font-size:11px;margin:2px 2px 0 0}
+#ov{position:fixed;inset:0;background:var(--bg);z-index:20;overflow:auto;display:none;padding:env(safe-area-inset-top,0) 14px 40px}
+#ov .in{max-width:720px;margin:auto}
+.sticky{position:sticky;bottom:0;background:var(--bg);padding:10px 0}
+.chk{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}.chk label{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:7px 12px;color:var(--ink);font-size:13px}
+.chk input{width:auto;margin:0 6px 0 0}
+.logo{width:68px;height:68px;border-radius:22px;margin:0 auto 14px;background:linear-gradient(135deg,#0E1A26,#1c3a4d);color:var(--gd);font:700 30px 'Playfair Display',Georgia,serif;display:grid;place-items:center;border:1px solid var(--gd)}
+.ph{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.ph div{position:relative}.ph img{width:96px;height:72px;object-fit:cover;border-radius:12px}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0));transform:translateX(-50%);background:#0E1A26;color:#fff;border:1px solid var(--gd);padding:10px 16px;border-radius:12px;z-index:50;max-width:90vw;font-size:13px}
+.ph button{position:absolute;top:3px;right:3px;border:0;border-radius:50%;background:#000a;color:#fff;width:22px;height:22px}
+</style></head><body>
+<header><span id="sync">cloud: ...</span><b>GLOSSMAT</b><small>Car Care Studio · PPF · Ceramic · Polish</small></header>
+<main id="app"></main>
+<div id="ov"><div class="in" id="ovc"></div></div>
+<nav id="nav"></nav>
+<script type="module">
+import {initializeApp,deleteApp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,createUserWithEmailAndPassword} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import {initializeFirestore,persistentLocalCache,collection,doc,setDoc,getDoc,getDocs,deleteDoc,onSnapshot,query,where,arrayUnion,deleteField} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import {firebaseConfig,ID_DOMAIN} from './firebase-config.js';
+
+const $=s=>document.querySelector(s);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const LISTS=['makes','models','showrooms','ppfBrands','ppfModels','ceramicBrands','ceramicModels'];
+const NOCFG=String(firebaseConfig.apiKey||'').startsWith('PASTE');
+let newAdmin=null,S={emps:[],jobs:[],att:{},lists:{},admins:[]},me=null,tab='att',attDate=today(),grp='date',jq='',cj=null,isNew=false,PH=[],loginErr='',ready=false,unsubs=[],unAtt=null,attYM='';
+let app,auth,db;
+if(!NOCFG){app=initializeApp(firebaseConfig);auth=getAuth(app);db=initializeFirestore(app,{localCache:persistentLocalCache()})}
+const setSync=()=>{$('#sync').textContent=navigator.onLine?'cloud: online':'offline - saves when back online'};
+addEventListener('online',setSync);addEventListener('offline',setSync);setSync();
+
+/* ---------- auth ---------- */
+if(auth)onAuthStateChanged(auth,async u=>{
+  if(!u){me=null;stopAll();ready=true;render();return}
+  try{const s=await getDoc(doc(db,'admins',u.uid));
+    if(!s.exists()){loginErr='This account is not an admin';await signOut(auth);return}
+    me={uid:u.uid,...s.data()};loginErr='';startAll();ready=true;render()}
+  catch(e){loginErr='Could not verify login: '+(e.code||e.message);await signOut(auth)}});
+async function login(){const id=$('#lu').value.trim().toLowerCase(),p=$('#lp').value;if(!id||!p)return;
+  $('#le').textContent='Checking...';
+  try{await signInWithEmailAndPassword(auth,id+'@'+ID_DOMAIN,p)}catch(e){$('#le').textContent='Incorrect ID or password'}}
+function logout(){$('#ov').style.display='none';signOut(auth)}
+function loginView(){$('#nav').innerHTML='';
+  $('#app').innerHTML=`<div class="card" style="margin-top:8vh;text-align:center"><div class="logo">G</div><h2>Admin Login</h2><p class="mut">Only admins can sign in</p>
+  ${NOCFG?'<p class="bad">Paste your Firebase details into firebase-config.js (see the README).</p>':`<input id="lu" placeholder="Admin ID" autocapitalize="none" autocomplete="username"><input id="lp" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()"><button class="btn" style="width:100%" onclick="login()">Login</button>`}
+  <p id="le" class="bad">${esc(loginErr)}</p></div>`}
+
+/* ---------- live data ---------- */
+const byName=(a,b)=>(a.name||'').localeCompare(b.name||'');
+function startAll(){stopAll();
+  unsubs.push(onSnapshot(collection(db,'staff'),s=>{S.emps=s.docs.map(d=>({id:d.id,...d.data()})).sort(byName);render()}));
+  unsubs.push(onSnapshot(collection(db,'jobs'),s=>{S.jobs=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
+  unsubs.push(onSnapshot(doc(db,'lists','main'),s=>{S.lists=s.data()||{};if($('#ov').style.display!=='block')render()}));
+  if(me.role==='main')unsubs.push(onSnapshot(collection(db,'admins'),s=>{S.admins=s.docs.map(d=>({uid:d.id,...d.data()}));render()}));
+  subAtt()}
+function stopAll(){unsubs.forEach(f=>f());unsubs=[];if(unAtt)unAtt();unAtt=null;attYM='';S={emps:[],jobs:[],att:{},lists:{},admins:[]}}
+function subAtt(){const ym=attDate.slice(0,7);if(ym===attYM||!db||!me)return;attYM=ym;if(unAtt)unAtt();S.att={};
+  unAtt=onSnapshot(query(collection(db,'attendance'),where('ym','==',ym)),s=>{S.att={};s.docs.forEach(d=>{const x=d.data();S.att[x.empId]=x.days||{}});render()})}
+const L=k=>[...(S.lists[k]||[])].sort();
+function remember(j){const m={makes:j.make,models:j.model,showrooms:j.prov,ppfBrands:j.ppfBrand,ppfModels:j.ppfModel,ceramicBrands:j.cBrand,ceramicModels:j.cModel},o={};
+  for(const k in m){const v=(m[k]||'').trim();if(v&&!L(k).some(x=>x.toLowerCase()===v.toLowerCase()))o[k]=arrayUnion(v)}
+  if(Object.keys(o).length)setDoc(doc(db,'lists','main'),o,{merge:true}).catch(()=>{})}
+const dopts=k=>`<datalist id="dl_${k}">${L(k).map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`;
+
+/* ---------- shell ---------- */
+function go(k){tab=k;render()}
+let tt;function toast(m){let e=$('#toast');if(!e){e=document.createElement('div');e.id='toast';e.className='toast';document.body.appendChild(e)}e.textContent=m;e.style.display='block';clearTimeout(tt);tt=setTimeout(()=>e.style.display='none',3500)}
+function sure(b,fn){if(b.dataset.a){fn();return}b.dataset.a=1;b._t=b.textContent;b.textContent='Tap again to confirm';setTimeout(()=>{delete b.dataset.a;b.textContent=b._t},3000)}
+function clearNA(){newAdmin=null;render()}
+function render(){if(!ready)return;if(!me)return loginView();
+ $('#nav').innerHTML=[['att','Attendance'],['jobs','Vehicles'],['rec','Records'],['set','Staff']].map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="go('${k}')">${l}</button>`).join('');
+ $('#app').innerHTML={att:vAtt,jobs:vJobs,rec:vRec,set:vSet}[tab]()}
+
+/* ---------- attendance ---------- */
+const OFFMAX=e=>e.sex==='F'?5:4;
+const monthCount=e=>Object.values(S.att[e.id]||{}).filter(v=>v==='O').length;
+function vAtt(){
+ if(!S.emps.length)return`<div class="card"><h2>Add staff first</h2><p class="mut">Open the Staff tab, enter the employee name, choose Male or Female and add.</p><button class="btn" onclick="go('set')">Add staff</button></div>`;
+ return`<div class="card"><label>Date</label><input type="date" value="${attDate}" onchange="setAttDate(this.value)">
+ ${S.emps.map(e=>{const v=(S.att[e.id]||{})[attDate.slice(8)]||'',c=monthCount(e),mx=OFFMAX(e);
+ return`<div class="emp"><div class="n">${esc(e.name)}<small class="${c>mx?'bad':''}">${e.sex==='F'?'Female':'Male'} · Off ${c}/${mx} this month${c>mx?' (limit exceeded)':''}</small></div>
+ <div class="seg">${['P','A','O'].map(k=>`<button class="${k}${v===k?' on':''}" onclick="mark('${e.id}','${k}')">${k==='O'?'Off':k}</button>`).join('')}</div></div>`}).join('')}</div>
+ <div class="row"><button class="btn g" onclick="expAtt('xlsx')">Excel export</button><button class="btn g" onclick="expAtt('pdf')">PDF export</button></div>
+ <p class="mut">P = Present, A = Absent, Off = weekly off. Male staff get 4 offs and female staff 5 offs per month.</p>`}
+function setAttDate(v){attDate=v||today();subAtt();render()}
+function mark(id,k){const ym=attDate.slice(0,7),d=attDate.slice(8),cur=(S.att[id]||{})[d];
+ setDoc(doc(db,'attendance',ym+'_'+id),{ym,empId:id,days:{[d]:cur===k?deleteField():k}},{merge:true}).catch(e=>toast('Could not save: '+e.code))}
+function expAtt(f){const ym=attDate.slice(0,7),n=new Date(+ym.slice(0,4),+ym.slice(5),0).getDate();
+ const head=['Name','Type',...Array.from({length:n},(_,i)=>i+1),'P','A','Off'];
+ const rows=S.emps.map(e=>{const m=S.att[e.id]||{},v=Object.values(m);
+  return[e.name,e.sex==='F'?'Female':'Male',...Array.from({length:n},(_,i)=>m[String(i+1).padStart(2,'0')]||''),v.filter(x=>x==='P').length,v.filter(x=>x==='A').length,v.filter(x=>x==='O').length]});
+ out('Attendance '+ym,head,rows,f,'l',6)}
+
+/* ---------- jobs ---------- */
+const paid=j=>(j.pays||[]).reduce((a,p)=>a+(+p.amt||0),0),due=j=>(+j.price||0)-paid(j);
+const money=n=>'₹'+(+n||0).toLocaleString('en-IN');
+function vJobs(){const q=jq.toLowerCase();
+ const A=[...S.jobs].sort((a,b)=>((b.inDate||'')+(b.inTime||'')).localeCompare((a.inDate||'')+(a.inTime||''))).filter(j=>!q||JSON.stringify(j).toLowerCase().includes(q));
+ return`<button class="btn" style="width:100%" onclick="openJob()">+ New vehicle entry</button>
+ <input placeholder="Search: number, name, showroom..." value="${esc(jq)}" oninput="setJq(this.value)" style="margin-top:10px">
+ ${A.map(j=>`<div class="card job" onclick="openJob('${j.id}')"><div class="t"><span>${esc(j.reg||'No number')} · ${esc(j.make)} ${esc(j.model)}</span><span class="${due(j)>0?'bad':'ok'}">${due(j)>0?'Due '+money(due(j)):'Paid'}</span></div>
+ <div class="mut">${j.inDate} ${j.inTime||''} · ${esc(j.prov||'Direct')}${j.cust?' · '+esc(j.cust):''}</div>
+ <div>${(j.work||[]).map(w=>`<span class="pill">${w}</span>`).join('')}<span class="pill">${j.outDate?'Delivered':'In progress'}</span></div></div>`).join('')||'<p class="mut">No entries yet.</p>'}`}
+let jt;function setJq(v){jq=v;clearTimeout(jt);jt=setTimeout(()=>{render();const i=document.querySelector('#app input');if(i){i.focus();i.setSelectionRange(v.length,v.length)}},250)}
+const sel=(k,v,id,ph)=>`<input list="dl_${k}" id="${id}" value="${esc(v)}" placeholder="${ph||''}" autocomplete="off">`;
+async function openJob(id){const j=S.jobs.find(x=>x.id===id)||{id:doc(collection(db,'jobs')).id,inDate:today(),inTime:new Date().toTimeString().slice(0,5),work:[],pays:[],emps:[],ppfType:'Full'};
+ cj=JSON.parse(JSON.stringify(j));cj.work=cj.work||[];cj.pays=cj.pays||[];cj.emps=cj.emps||[];isNew=!id;PH=[];
+ $('#ov').style.display='block';formRender();
+ if(id)try{const s=await getDocs(collection(db,'jobs',cj.id,'photos'));PH=s.docs.map(d=>({id:d.id,data:d.data().data}));collect();formRender()}catch(e){}}
+function formRender(){const j=cj,has=w=>j.work.includes(w);
+ $('#ovc').innerHTML=`${LISTS.map(dopts).join('')}<h2>${isNew?'New entry':'Edit entry'}</h2>
+ <h3>Vehicle arrival</h3><div class="g2"><div><label>Date</label><input type="date" id="inDate" value="${j.inDate||''}"></div><div><label>Time</label><input type="time" id="inTime" value="${j.inTime||''}"></div></div>
+ <div class="g2"><div><label>Company</label>${sel('makes',j.make,'make','Maruti, Tata...')}</div><div><label>Model</label>${sel('models',j.model,'model','Brezza...')}</div></div>
+ <div class="g2"><div><label>Registration no.</label><input id="reg" value="${esc(j.reg)}" style="text-transform:uppercase"></div><div><label>VIN / Chassis</label><input id="vin" value="${esc(j.vin)}"></div></div>
+ <label>Provided by (showroom or person)</label>${sel('showrooms',j.prov,'prov','Showroom name')}
+ <h3>Customer</h3><input id="cust" placeholder="Name" value="${esc(j.cust)}"><div class="g2"><input id="mob" type="tel" placeholder="Mobile" value="${esc(j.mob)}"><input id="addr" placeholder="Address" value="${esc(j.addr)}"></div>
+ <h3>Work</h3><div class="chk">${['PPF','Ceramic','Polish','Wash'].map(w=>`<label><input type="checkbox" ${has(w)?'checked':''} onchange="tg('${w}',this.checked)">${w}</label>`).join('')}</div>
+ ${has('PPF')?`<div class="card"><b>PPF</b><div class="g2"><div><label>Company</label>${sel('ppfBrands',j.ppfBrand,'ppfBrand')}</div><div><label>Model</label><input list="dl_ppfModels" id="ppfModel" value="${esc(j.ppfModel)}" onchange="autofill(this.value)"></div></div>
+ <div class="g2"><div><label>Roll number</label><input id="roll" value="${esc(j.roll)}"></div><div><label>Warranty (years)</label><input id="ppfYrs" type="number" value="${j.ppfYrs??''}"></div></div>
+ <label>Type</label><select id="ppfType" onchange="cj.ppfType=this.value">${['Full','Partial'].map(x=>`<option ${j.ppfType===x?'selected':''}>${x}</option>`).join('')}</select>
+ <div class="g2"><div><label>Used (ft²)</label><input id="ppfUsed" type="number" step="any" value="${j.ppfUsed??''}"></div><div><label>Remaining (ft²)</label><input id="ppfLeft" type="number" step="any" value="${j.ppfLeft??''}"></div></div>
+ <label>Parts covered (if partial)</label><input id="ppfParts" value="${esc(j.ppfParts)}" placeholder="Bonnet, bumper..."></div>`:''}
+ ${has('Ceramic')?`<div class="card"><b>Ceramic</b><div class="g2"><div><label>Company</label>${sel('ceramicBrands',j.cBrand,'cBrand')}</div><div><label>Model</label>${sel('ceramicModels',j.cModel,'cModel')}</div></div><label>Warranty (years)</label><input id="cYrs" type="number" value="${j.cYrs??''}"></div>`:''}
+ <h3>Payment</h3><label>Total price (₹)</label><input id="price" type="number" value="${j.price??''}" oninput="cj.price=this.value;dueUp()">
+ ${j.pays.map((p,i)=>`<div class="card"><div class="g2"><input type="date" value="${p.date}" onchange="cj.pays[${i}].date=this.value"><input type="number" placeholder="Amount" value="${p.amt??''}" oninput="cj.pays[${i}].amt=this.value;dueUp()"></div>
+ <div class="g2"><select onchange="cj.pays[${i}].mode=this.value">${['UPI','NEFT/RTGS','Cash','Card'].map(m=>`<option ${p.mode===m?'selected':''}>${m}</option>`).join('')}</select><select onchange="cj.pays[${i}].by=this.value"><option>Office account</option>${S.emps.map(e=>`<option ${p.by===e.name?'selected':''}>${esc(e.name)}</option>`).join('')}</select></div>
+ <button class="btn r" onclick="collect();cj.pays.splice(${i},1);formRender()">Remove</button></div>`).join('')}
+ <button class="btn g" onclick="collect();cj.pays.push({date:today(),amt:'',mode:'UPI',by:'Office account'});formRender()">+ Add instalment</button>
+ <p><b id="dueTxt"></b></p>
+ <h3>Assigned staff</h3><div class="chk">${S.emps.map(e=>`<label><input type="checkbox" ${j.emps.includes(e.name)?'checked':''} onchange="te('${esc(e.name)}',this.checked)">${esc(e.name)}</label>`).join('')||'<span class="mut">Add employees in the Staff tab</span>'}</div>
+ <div class="g2"><div><label>Completed date</label><input type="date" id="outDate" value="${j.outDate||''}"></div><div><label>Time</label><input type="time" id="outTime" value="${j.outTime||''}"></div></div>
+ <label>Remarks</label><textarea id="rem" rows="3">${esc(j.rem)}</textarea>
+ <h3>Vehicle photos</h3><input type="file" accept="image/*" multiple onchange="addPh(this.files)"><div class="ph">${PH.map(p=>`<div><img src="${p.data}"><button onclick="rmPh('${p.id}')">×</button></div>`).join('')}</div>
+ <div class="sticky row"><button class="btn g" onclick="closeJob()">Close</button><button class="btn g" onclick="invoice()">Invoice</button><button class="btn" onclick="saveJob()">Save</button>${isNew?'':'<button class="btn r" onclick="sure(this,delJob)">Delete</button>'}</div>`;dueUp()}
+function dueUp(){const e=$('#dueTxt');if(e){const d=due(cj);e.innerHTML=`Received ${money(paid(cj))} · <span class="${d>0?'bad':'ok'}">Due ${money(d)}</span>`}}
+function tg(w,c){collect();cj.work=c?[...cj.work,w]:cj.work.filter(x=>x!==w);formRender()}
+function te(n,c){collect();cj.emps=c?[...cj.emps,n]:cj.emps.filter(x=>x!==n)}
+function collect(){const ks=['inDate','inTime','make','model','reg','vin','prov','cust','mob','addr','ppfBrand','ppfModel','roll','ppfYrs','ppfUsed','ppfLeft','ppfParts','cBrand','cModel','cYrs','price','outDate','outTime','rem'];
+ ks.forEach(k=>{const e=document.getElementById(k);if(e)cj[k]=k==='reg'?e.value.toUpperCase():e.value})}
+function autofill(m){collect();const p=[...S.jobs].sort((a,b)=>(a.inDate||'').localeCompare(b.inDate||'')).reverse().find(x=>x.ppfModel&&x.ppfModel.toLowerCase()===m.toLowerCase()&&x.id!==cj.id);
+ if(p){['ppfBrand','ppfYrs','ppfType','ppfParts'].forEach(k=>cj[k]=p[k]);formRender()}}
+function clean(o){return JSON.parse(JSON.stringify(o,(k,v)=>v===undefined?null:v))}
+function saveJob(){collect();if(!cj.reg&&!cj.model){toast('Enter a registration number or model');return}
+ remember(cj);setDoc(doc(db,'jobs',cj.id),clean(cj)).catch(e=>toast('Could not save: '+e.code));closeJob()}
+async function delJob(){
+ try{const s=await getDocs(collection(db,'jobs',cj.id,'photos'));s.docs.forEach(d=>deleteDoc(d.ref))}catch(e){}
+ deleteDoc(doc(db,'jobs',cj.id));closeJob()}
+function closeJob(){$('#ov').style.display='none';render()}
+function addPh(fs){collect();[...fs].forEach(f=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,720/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+ const data=c.toDataURL('image/jpeg',.6),ref=doc(collection(db,'jobs',cj.id,'photos'));setDoc(ref,{data,ts:Date.now()}).catch(()=>{});PH.push({id:ref.id,data});collect();formRender()};im.src=r.result};r.readAsDataURL(f)})}
+function rmPh(id){collect();deleteDoc(doc(db,'jobs',cj.id,'photos',id));PH=PH.filter(p=>p.id!==id);formRender()}
+function invoice(){collect();const j=cj,d=new jspdf.jsPDF({unit:'pt',format:'a4'}),hf={fillColor:[14,26,38],textColor:[201,164,92]};
+ d.setFillColor(14,26,38);d.rect(0,0,595,90,'F');d.setTextColor(201,164,92);d.setFontSize(24);d.text('GLOSSMAT',36,48);d.setTextColor(255,255,255);d.setFontSize(10);d.text('Car Care Studio',36,66);d.setFontSize(16);d.text('INVOICE',490,48);
+ d.setTextColor(30);d.setFontSize(10);let y=120;const R=(a,b)=>{d.text(a,36,y);d.text(String(b||'-'),150,y);y+=16};
+ R('Date',j.inDate);R('Customer',j.cust);R('Mobile',j.mob);R('Address',j.addr);R('Vehicle',(j.make||'')+' '+(j.model||''));R('Registration',j.reg);R('VIN',j.vin);R('Provided by',j.prov);
+ const w=[];if(j.work.includes('PPF'))w.push(['PPF',[j.ppfBrand,j.ppfModel,j.ppfType,j.ppfYrs?j.ppfYrs+' yrs':''].filter(Boolean).join(' / ')]);if(j.work.includes('Ceramic'))w.push(['Ceramic',[j.cBrand,j.cModel,j.cYrs?j.cYrs+' yrs':''].filter(Boolean).join(' / ')]);['Polish','Wash'].forEach(x=>{if(j.work.includes(x))w.push([x,''])});
+ d.autoTable({startY:y+10,head:[['Work','Details']],body:w,headStyles:hf});
+ d.autoTable({startY:d.lastAutoTable.finalY+14,head:[['Payment date','Mode','Received by','Amount']],body:(j.pays||[]).map(p=>[p.date,p.mode,p.by,'Rs '+(+p.amt||0)]),headStyles:hf});
+ y=d.lastAutoTable.finalY+28;d.setFontSize(11);d.text('Total: Rs '+(+j.price||0),36,y);d.text('Received: Rs '+paid(j),36,y+16);d.setFontSize(13);d.text('Due: Rs '+due(j),36,y+36);
+ saveBlob('Invoice '+(j.reg||'vehicle')+'.pdf',d.output('blob'))}
+
+/* ---------- records ---------- */
+function groups(){const g={};S.jobs.forEach(j=>{const ks=grp==='date'?[j.inDate]:grp==='emp'?((j.emps||[]).length?j.emps:['(none)']):[j.prov||'Direct customer'];ks.forEach(k=>(g[k]=g[k]||[]).push(j))});return Object.entries(g).sort((a,b)=>grp==='date'?String(b[0]).localeCompare(String(a[0])):String(a[0]).localeCompare(String(b[0])))}
+function setGrp(k){grp=k;render()}
+function vRec(){const G=groups(),tot=S.jobs.reduce((a,j)=>a+(+j.price||0),0),pd=S.jobs.reduce((a,j)=>a+paid(j),0);
+ return`<div class="card"><h2>Records</h2><div class="g2"><div><span class="mut">Total vehicles</span><br><b>${S.jobs.length}</b></div><div><span class="mut">Outstanding due</span><br><b class="bad">${money(tot-pd)}</b></div></div></div>
+ <div class="seg" style="margin-bottom:8px">${[['date','Date wise'],['emp','Employee wise'],['show','Showroom wise']].map(([k,l])=>`<button style="${grp===k?'background:var(--ac);color:#fff;border-color:var(--ac)':''}" onclick="setGrp('${k}')">${l}</button>`).join('')}</div>
+ ${G.map(([k,a])=>`<div class="card"><b>${esc(k)}</b> <span class="mut">· ${a.length} vehicles · ${money(a.reduce((s,j)=>s+(+j.price||0),0))}</span>${a.map(j=>`<div class="mut" onclick="openJob('${j.id}')" style="cursor:pointer">${esc(j.reg||'-')} · ${esc(j.make)} ${esc(j.model)} · ${(j.work||[]).join('+')}</div>`).join('')}</div>`).join('')||'<p class="mut">No records yet.</p>'}
+ <h3>Export</h3><div class="row"><button class="btn g" onclick="expJobs('xlsx')">All entries (Excel)</button><button class="btn g" onclick="expJobs('pdf')">All entries (PDF)</button></div>
+ <div class="row" style="margin-top:8px"><button class="btn g" onclick="expSum('xlsx')">Summary (Excel)</button><button class="btn g" onclick="expSum('pdf')">Summary (PDF)</button></div>`}
+function expJobs(f){const head=['Date','Time','Company','Model','Reg no','VIN','Provided by','Customer','Mobile','Address','Work','PPF company','PPF model','Roll','PPF years','PPF type','Used ft²','Remaining ft²','Parts','Ceramic company','Ceramic model','Ceramic years','Price','Received','Due','Payments','Staff','Completed','Remarks'];
+ const rows=[...S.jobs].sort((a,b)=>(a.inDate||'').localeCompare(b.inDate||'')).map(j=>[j.inDate,j.inTime,j.make,j.model,j.reg,j.vin,j.prov,j.cust,j.mob,j.addr,(j.work||[]).join('+'),j.ppfBrand,j.ppfModel,j.roll,j.ppfYrs,j.ppfType,j.ppfUsed,j.ppfLeft,j.ppfParts,j.cBrand,j.cModel,j.cYrs,+j.price||0,paid(j),due(j),(j.pays||[]).map(p=>`${p.date} ${p.amt} ${p.mode} (${p.by})`).join('; '),(j.emps||[]).join(', '),((j.outDate||'')+' '+(j.outTime||'')).trim(),j.rem]);
+ out('Vehicle entries',head,rows,f,'l',5)}
+function expSum(f){const rows=groups().map(([k,a])=>[k,a.length,a.reduce((s,j)=>s+(+j.price||0),0),a.reduce((s,j)=>s+paid(j),0),a.reduce((s,j)=>s+due(j),0),a.map(j=>j.reg).filter(Boolean).join(', ')]);
+ out({date:'Date wise',emp:'Employee wise',show:'Showroom wise'}[grp]+' summary',['Group','Vehicles','Price','Received','Due','Registration numbers'],rows,f,'p',8)}
+
+/* ---------- staff + admins ---------- */
+function vSet(){const main=me.role==='main';
+ return`<div class="card"><h2>Staff</h2><input id="en" placeholder="Employee name"><select id="es"><option value="M">Male (4 off)</option><option value="F">Female (5 off)</option></select><button class="btn" style="width:100%" onclick="addEmp()">Add</button></div>
+ <div class="card">${S.emps.map(e=>`<div class="emp"><div class="n">${esc(e.name)}<small>${e.sex==='F'?'Female · 5 off':'Male · 4 off'}</small></div><button class="btn r" onclick="sure(this,()=>delEmp('${e.id}'))">Remove</button></div>`).join('')||'<p class="mut">No staff yet.</p>'}</div>
+ ${main?`${newAdmin?`<div class="card"><b>Admin created</b><br>ID: ${esc(newAdmin.id)}<br>Password: ${esc(newAdmin.p)}<p class="mut">Shown only once. Share it with the admin now.</p><button class="btn g" onclick="clearNA()">Done</button></div>`:''}<div class="card"><h2>Admins</h2><input id="an" placeholder="New admin ID (lowercase letters and numbers)" autocapitalize="none"><input id="ap" placeholder="Password (6+ characters)"><button class="btn" style="width:100%" onclick="addAdmin()">Create admin</button>
+ ${S.admins.map(a=>`<div class="emp"><div class="n">${esc(a.id)}<small>${a.role==='main'?'Main admin':'Admin'}</small></div>${a.role==='main'?'':`<button class="btn r" onclick="sure(this,()=>delAdmin('${a.uid}'))">Remove</button>`}</div>`).join('')}</div>`:''}
+ <div class="card"><button class="btn g" style="width:100%" onclick="logout()">Logout (${esc(me.id)})</button></div>`}
+function addEmp(){const n=$('#en').value.trim();if(!n)return;setDoc(doc(db,'staff',uid()),{name:n,sex:$('#es').value}).catch(e=>toast('Could not save: '+e.code));$('#en').value=''}
+function delEmp(id){deleteDoc(doc(db,'staff',id))}
+async function addAdmin(){const id=$('#an').value.trim().toLowerCase(),p=$('#ap').value;
+ if(!/^[a-z0-9._-]{3,}$/.test(id)||p.length<6){toast('ID needs at least 3 characters (a-z, 0-9) and the password at least 6');return}
+ const sec=initializeApp(firebaseConfig,'sec'+Date.now());
+ try{const c=await createUserWithEmailAndPassword(getAuth(sec),id+'@'+ID_DOMAIN,p);
+  await setDoc(doc(db,'admins',c.user.uid),{id,role:'admin'});await signOut(getAuth(sec));
+  newAdmin={id,p};render()}
+ catch(e){toast(e.code==='auth/email-already-in-use'?'This ID already exists':'Could not create admin: '+(e.code||e.message))}
+ finally{deleteApp(sec)}}
+function delAdmin(u){deleteDoc(doc(db,'admins',u))}
+
+/* ---------- export ---------- */
+function saveBlob(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+function out(title,head,rows,f,orient,fs){
+ if(f==='xlsx'){const ws=XLSX.utils.aoa_to_sheet([head,...rows]),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,title.slice(0,30));
+  saveBlob(title+'.xlsx',new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/octet-stream'}))}
+ else{const d=new jspdf.jsPDF({orientation:orient==='l'?'landscape':'portrait',unit:'pt',format:'a4'});d.setFontSize(14);d.text('GLOSSMAT - '+title,28,30);
+  d.autoTable({head:[head],body:rows.map(r=>r.map(x=>x??'')),startY:42,styles:{fontSize:fs},headStyles:{fillColor:[14,26,38],textColor:[201,164,92]},margin:{left:20,right:20}});
+  saveBlob(title+'.pdf',d.output('blob'))}}
+
+Object.assign(window,{toast,sure,clearNA,login,logout,go,render,setAttDate,mark,expAtt,openJob,setJq,tg,te,autofill,collect,saveJob,delJob,closeJob,addPh,rmPh,invoice,setGrp,expJobs,expSum,addEmp,delEmp,addAdmin,delAdmin,dueUp,formRender,today,cjRef:()=>cj});
+Object.defineProperty(window,'cj',{get:()=>cj});
+if(NOCFG){ready=true;render()}
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script></body></html>
