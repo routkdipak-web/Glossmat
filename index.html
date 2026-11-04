@@ -62,9 +62,10 @@ const $=s=>document.querySelector(s);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ROLES=['Applicator','Helper','Manager','Accountant','Sweeper','Other'];
 const LISTS=['makes','models','showrooms','ppfBrands','ppfModels','ceramicBrands','ceramicModels'];
 const NOCFG=String(firebaseConfig.apiKey||'').startsWith('PASTE');
-let newAdmin=null,S={emps:[],jobs:[],att:{},lists:{},admins:[]},me=null,tab='att',attDate=today(),grp='date',jq='',cj=null,isNew=false,PH=[],loginErr='',ready=false,unsubs=[],unAtt=null,attYM='';
+let editId='',newAdmin=null,S={emps:[],jobs:[],att:{},lists:{},admins:[]},me=null,tab='att',attDate=today(),grp='date',jq='',cj=null,isNew=false,PH=[],loginErr='',ready=false,unsubs=[],unAtt=null,attYM='';
 let app,auth,db;
 if(!NOCFG){app=initializeApp(firebaseConfig);auth=getAuth(app);db=initializeFirestore(app,{localCache:persistentLocalCache()})}
 const setSync=()=>{$('#sync').textContent=navigator.onLine?'cloud: online':'offline - saves when back online'};
@@ -115,11 +116,12 @@ function render(){if(!ready)return;if(!me)return loginView();
 /* ---------- attendance ---------- */
 const OFFMAX=e=>e.sex==='F'?5:4;
 const monthCount=e=>Object.values(S.att[e.id]||{}).filter(v=>v==='O').length;
+const cnt=(e,k)=>Object.values(S.att[e.id]||{}).filter(v=>v===k).length;
 function vAtt(){
  if(!S.emps.length)return`<div class="card"><h2>Add staff first</h2><p class="mut">Open the Staff tab, enter the employee name, choose Male or Female and add.</p><button class="btn" onclick="go('set')">Add staff</button></div>`;
- return`<div class="card"><label>Date</label><input type="date" value="${attDate}" onchange="setAttDate(this.value)">
+ return`<div class="card"><label>Date</label><input type="date" value="${attDate}" onchange="setAttDate(this.value)"><p class="mut">Totals are for ${new Date(attDate.slice(0,7)+'-01T00:00').toLocaleString('en',{month:'long',year:'numeric'})}, counting the days marked so far.</p>
  ${S.emps.map(e=>{const v=(S.att[e.id]||{})[attDate.slice(8)]||'',c=monthCount(e),mx=OFFMAX(e);
- return`<div class="emp"><div class="n">${esc(e.name)}<small class="${c>mx?'bad':''}">${e.sex==='F'?'Female':'Male'} · Off ${c}/${mx} this month${c>mx?' (limit exceeded)':''}</small></div>
+ return`<div class="emp"><div class="n">${esc(e.name)}<small>${[e.sex==='F'?'Female':'Male',e.role].filter(Boolean).map(esc).join(' · ')}</small><small class="${c>mx?'bad':''}">Off ${c}/${mx}${c>mx?' (limit exceeded)':''}</small><small><span class="ok">Present ${cnt(e,'P')}</span> · <span class="bad">Absent ${cnt(e,'A')}</span></small></div>
  <div class="seg">${['P','A','O'].map(k=>`<button class="${k}${v===k?' on':''}" onclick="mark('${e.id}','${k}')">${k==='O'?'Off':k}</button>`).join('')}</div></div>`}).join('')}</div>
  <div class="row"><button class="btn g" onclick="expAtt('xlsx')">Excel export</button><button class="btn g" onclick="expAtt('pdf')">PDF export</button></div>
  <p class="mut">P = Present, A = Absent, Off = weekly off. Male staff get 4 offs and female staff 5 offs per month.</p>`}
@@ -127,9 +129,9 @@ function setAttDate(v){attDate=v||today();subAtt();render()}
 function mark(id,k){const ym=attDate.slice(0,7),d=attDate.slice(8),cur=(S.att[id]||{})[d];
  setDoc(doc(db,'attendance',ym+'_'+id),{ym,empId:id,days:{[d]:cur===k?deleteField():k}},{merge:true}).catch(e=>toast('Could not save: '+e.code))}
 function expAtt(f){const ym=attDate.slice(0,7),n=new Date(+ym.slice(0,4),+ym.slice(5),0).getDate();
- const head=['Name','Type',...Array.from({length:n},(_,i)=>i+1),'P','A','Off'];
+ const head=['Name','Type','Role',...Array.from({length:n},(_,i)=>i+1),'P','A','Off'];
  const rows=S.emps.map(e=>{const m=S.att[e.id]||{},v=Object.values(m);
-  return[e.name,e.sex==='F'?'Female':'Male',...Array.from({length:n},(_,i)=>m[String(i+1).padStart(2,'0')]||''),v.filter(x=>x==='P').length,v.filter(x=>x==='A').length,v.filter(x=>x==='O').length]});
+  return[e.name,e.sex==='F'?'Female':'Male',e.role||'',...Array.from({length:n},(_,i)=>m[String(i+1).padStart(2,'0')]||''),v.filter(x=>x==='P').length,v.filter(x=>x==='A').length,v.filter(x=>x==='O').length]});
  out('Attendance '+ym,head,rows,f,'l',6)}
 
 /* ---------- jobs ---------- */
@@ -207,22 +209,35 @@ function vRec(){const G=groups(),tot=S.jobs.reduce((a,j)=>a+(+j.price||0),0),pd=
  return`<div class="card"><h2>Records</h2><div class="g2"><div><span class="mut">Total vehicles</span><br><b>${S.jobs.length}</b></div><div><span class="mut">Outstanding due</span><br><b class="bad">${money(tot-pd)}</b></div></div></div>
  <div class="seg" style="margin-bottom:8px">${[['date','Date wise'],['emp','Employee wise'],['show','Showroom wise']].map(([k,l])=>`<button style="${grp===k?'background:var(--ac);color:#fff;border-color:var(--ac)':''}" onclick="setGrp('${k}')">${l}</button>`).join('')}</div>
  ${G.map(([k,a])=>`<div class="card"><b>${esc(k)}</b> <span class="mut">· ${a.length} vehicles · ${money(a.reduce((s,j)=>s+(+j.price||0),0))}</span>${a.map(j=>`<div class="mut" onclick="openJob('${j.id}')" style="cursor:pointer">${esc(j.reg||'-')} · ${esc(j.make)} ${esc(j.model)} · ${(j.work||[]).join('+')}</div>`).join('')}</div>`).join('')||'<p class="mut">No records yet.</p>'}
+ ${ppfBlock()}
  <h3>Export</h3><div class="row"><button class="btn g" onclick="expJobs('xlsx')">All entries (Excel)</button><button class="btn g" onclick="expJobs('pdf')">All entries (PDF)</button></div>
- <div class="row" style="margin-top:8px"><button class="btn g" onclick="expSum('xlsx')">Summary (Excel)</button><button class="btn g" onclick="expSum('pdf')">Summary (PDF)</button></div>`}
+ <div class="row" style="margin-top:8px"><button class="btn g" onclick="expSum('xlsx')">Summary (Excel)</button><button class="btn g" onclick="expSum('pdf')">Summary (PDF)</button></div>
+ <div class="row" style="margin-top:8px"><button class="btn g" onclick="expPPF('xlsx')">PPF register (Excel)</button><button class="btn g" onclick="expPPF('pdf')">PPF register (PDF)</button></div>`}
 function expJobs(f){const head=['Date','Time','Company','Model','Reg no','VIN','Provided by','Customer','Mobile','Address','Work','PPF company','PPF model','Roll','PPF years','PPF type','Used ft²','Remaining ft²','Parts','Ceramic company','Ceramic model','Ceramic years','Price','Received','Due','Payments','Staff','Completed','Remarks'];
  const rows=[...S.jobs].sort((a,b)=>(a.inDate||'').localeCompare(b.inDate||'')).map(j=>[j.inDate,j.inTime,j.make,j.model,j.reg,j.vin,j.prov,j.cust,j.mob,j.addr,(j.work||[]).join('+'),j.ppfBrand,j.ppfModel,j.roll,j.ppfYrs,j.ppfType,j.ppfUsed,j.ppfLeft,j.ppfParts,j.cBrand,j.cModel,j.cYrs,+j.price||0,paid(j),due(j),(j.pays||[]).map(p=>`${p.date} ${p.amt} ${p.mode} (${p.by})`).join('; '),(j.emps||[]).join(', '),((j.outDate||'')+' '+(j.outTime||'')).trim(),j.rem]);
  out('Vehicle entries',head,rows,f,'l',5)}
+const ppfJobs=()=>S.jobs.filter(j=>j.ppfBrand||j.ppfModel||j.roll||(j.work||[]).includes('PPF'));
+function ppfBlock(){const g={};ppfJobs().forEach(j=>{const k=(j.roll||'').trim();(g[k]=g[k]||[]).push(j)});
+ const ks=Object.keys(g).sort((a,b)=>a===''?1:b===''?-1:a.localeCompare(b));
+ return`<h3>PPF register</h3>${ks.map(k=>{const a=g[k].sort((x,y)=>(y.inDate||'').localeCompare(x.inDate||'')),f=a[0],used=a.reduce((s,j)=>s+(+j.ppfUsed||0),0);
+ return`<div class="card"><b>Roll ID: ${esc(k)}</b><div class="mut">${esc([f.ppfBrand,f.ppfModel,f.ppfYrs?f.ppfYrs+' yrs':''].filter(Boolean).join(' · '))}</div>
+ ${a.map(j=>`<div class="mut" onclick="openJob('${j.id}')" style="cursor:pointer">${esc([j.reg,[j.make,j.model].filter(Boolean).join(' '),j.inDate,j.ppfType,j.ppfUsed?j.ppfUsed+' ft² used':'',k===''?[j.ppfBrand,j.ppfModel].filter(Boolean).join(' '):''].filter(Boolean).join(' · '))}</div>`).join('')}
+ <div class="mut">Total used: ${used} ft²${f.ppfLeft!=null&&f.ppfLeft!==''?' · Remaining after last use: '+esc(f.ppfLeft)+' ft²':''}</div></div>`}).join('')||'<p class="mut">No PPF records yet.</p>'}`}
+function expPPF(f){const rows=[...ppfJobs()].sort((a,b)=>(a.inDate||'').localeCompare(b.inDate||'')).map(j=>[j.inDate,j.roll,j.ppfBrand,j.ppfModel,j.ppfYrs,j.ppfType,j.ppfUsed,j.ppfLeft,j.ppfParts,j.make,j.model,j.reg,j.cust,j.prov]);
+ out('PPF register',['Date','Roll ID','PPF company','PPF model','Warranty (years)','Type','Used ft²','Remaining ft²','Parts','Vehicle company','Vehicle model','Reg no','Customer','Provided by'],rows,f,'l',6)}
 function expSum(f){const rows=groups().map(([k,a])=>[k,a.length,a.reduce((s,j)=>s+(+j.price||0),0),a.reduce((s,j)=>s+paid(j),0),a.reduce((s,j)=>s+due(j),0),a.map(j=>j.reg).filter(Boolean).join(', ')]);
  out({date:'Date wise',emp:'Employee wise',show:'Showroom wise'}[grp]+' summary',['Group','Vehicles','Price','Received','Due','Registration numbers'],rows,f,'p',8)}
 
 /* ---------- staff + admins ---------- */
-function vSet(){const main=me.role==='main';
- return`<div class="card"><h2>Staff</h2><input id="en" placeholder="Employee name"><select id="es"><option value="M">Male (4 off)</option><option value="F">Female (5 off)</option></select><button class="btn" style="width:100%" onclick="addEmp()">Add</button></div>
- <div class="card">${S.emps.map(e=>`<div class="emp"><div class="n">${esc(e.name)}<small>${e.sex==='F'?'Female · 5 off':'Male · 4 off'}</small></div><button class="btn r" onclick="sure(this,()=>delEmp('${e.id}'))">Remove</button></div>`).join('')||'<p class="mut">No staff yet.</p>'}</div>
+function vSet(){const main=me.role==='main',ee=S.emps.find(x=>x.id===editId)||{};
+ return`<div class="card"><h2>${editId?'Edit staff':'Add staff'}</h2><input id="en" placeholder="Employee name" value="${esc(ee.name)}"><input id="em" type="tel" placeholder="Mobile number (optional)" value="${esc(ee.mobile)}"><select id="er"><option value="">Role (optional)</option>${ROLES.map(r=>`<option ${ee.role===r?'selected':''}>${r}</option>`).join('')}</select><select id="es"><option value="M" ${ee.sex!=='F'?'selected':''}>Male (4 off)</option><option value="F" ${ee.sex==='F'?'selected':''}>Female (5 off)</option></select><div class="row"><button class="btn" onclick="addEmp()">${editId?'Save changes':'Add'}</button>${editId?`<button class="btn g" onclick="editEmp('')">Cancel</button>`:''}</div></div>
+ <div class="card">${S.emps.map(e=>`<div class="emp"><div class="n">${esc(e.name)}<small>${[e.sex==='F'?'Female · 5 off':'Male · 4 off',e.role,e.mobile].filter(Boolean).map(esc).join(' · ')}</small></div><button class="btn g" onclick="editEmp('${e.id}')">Edit</button><button class="btn r" onclick="sure(this,()=>delEmp('${e.id}'))">Remove</button></div>`).join('')||'<p class="mut">No staff yet.</p>'}</div>
  ${main?`${newAdmin?`<div class="card"><b>Admin created</b><br>ID: ${esc(newAdmin.id)}<br>Password: ${esc(newAdmin.p)}<p class="mut">Shown only once. Share it with the admin now.</p><button class="btn g" onclick="clearNA()">Done</button></div>`:''}<div class="card"><h2>Admins</h2><input id="an" placeholder="New admin ID (lowercase letters and numbers)" autocapitalize="none"><input id="ap" placeholder="Password (6+ characters)"><button class="btn" style="width:100%" onclick="addAdmin()">Create admin</button>
  ${S.admins.map(a=>`<div class="emp"><div class="n">${esc(a.id)}<small>${a.role==='main'?'Main admin':'Admin'}</small></div>${a.role==='main'?'':`<button class="btn r" onclick="sure(this,()=>delAdmin('${a.uid}'))">Remove</button>`}</div>`).join('')}</div>`:''}
  <div class="card"><button class="btn g" style="width:100%" onclick="logout()">Logout (${esc(me.id)})</button></div>`}
-function addEmp(){const n=$('#en').value.trim();if(!n)return;setDoc(doc(db,'staff',uid()),{name:n,sex:$('#es').value}).catch(e=>toast('Could not save: '+e.code));$('#en').value=''}
+function addEmp(){const n=$('#en').value.trim();if(!n){toast('Enter the employee name');return}
+ setDoc(doc(db,'staff',editId||uid()),{name:n,sex:$('#es').value,mobile:$('#em').value.trim(),role:$('#er').value}).catch(e=>toast('Could not save: '+e.code));editId='';render()}
+function editEmp(id){editId=id;render()}
 function delEmp(id){deleteDoc(doc(db,'staff',id))}
 async function addAdmin(){const id=$('#an').value.trim().toLowerCase(),p=$('#ap').value;
  if(!/^[a-z0-9._-]{3,}$/.test(id)||p.length<6){toast('ID needs at least 3 characters (a-z, 0-9) and the password at least 6');return}
@@ -243,7 +258,7 @@ function out(title,head,rows,f,orient,fs){
   d.autoTable({head:[head],body:rows.map(r=>r.map(x=>x??'')),startY:42,styles:{fontSize:fs},headStyles:{fillColor:[14,26,38],textColor:[201,164,92]},margin:{left:20,right:20}});
   saveBlob(title+'.pdf',d.output('blob'))}}
 
-Object.assign(window,{toast,sure,clearNA,login,logout,go,render,setAttDate,mark,expAtt,openJob,setJq,tg,te,autofill,collect,saveJob,delJob,closeJob,addPh,rmPh,invoice,setGrp,expJobs,expSum,addEmp,delEmp,addAdmin,delAdmin,dueUp,formRender,today,cjRef:()=>cj});
+Object.assign(window,{editEmp,expPPF,toast,sure,clearNA,login,logout,go,render,setAttDate,mark,expAtt,openJob,setJq,tg,te,autofill,collect,saveJob,delJob,closeJob,addPh,rmPh,invoice,setGrp,expJobs,expSum,addEmp,delEmp,addAdmin,delAdmin,dueUp,formRender,today,cjRef:()=>cj});
 Object.defineProperty(window,'cj',{get:()=>cj});
 if(NOCFG){ready=true;render()}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
