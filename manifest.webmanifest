@@ -1,13 +1,13 @@
 {
-  "name": "GLOSSMAT",
-  "short_name": "GLOSSMAT",
+  "name": "GLOSSMATT",
+  "short_name": "GLOSSMATT",
   "description": "Car PPF, Ceramic, Polish studio manager",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#070C11",
-  "theme_color": "#070C11",
+  "background_color": "#24262A",
+  "theme_color": "#24262A",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }

@@ -1,4 +1,4 @@
-# GLOSSMAT
+# GLOSSMATT
 
 Admin app for a car PPF, ceramic coating, polish and wash studio. It covers staff attendance, vehicle job entries, payments, records, invoices and Excel/PDF export. Data is stored live in Firebase Firestore. Only admins can sign in.
 
@@ -7,6 +7,7 @@ Admin app for a car PPF, ceramic coating, polish and wash studio. It covers staf
 - `firebase-config.js` - paste your Firebase project details here
 - `firestore.rules` - database security rules
 - `firebase.json` - Firebase Hosting and rules deployment
+- `logo.png` - the GLOSSMATT logo (it is also embedded in `index.html`, so PDFs and Excel files carry it)
 - `manifest.webmanifest`, `sw.js`, `icon-192.png`, `icon-512.png`, `icon.svg` - install on a phone (PWA / APK)
 
 ## One-time setup
