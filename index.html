@@ -140,8 +140,8 @@ function vHome(){const t=today(),ym=t.slice(0,7),H=new Date().getHours(),gr=H<12
  const pays=J.flatMap(j=>(j.pays||[]).map(p=>({d:p.date||'',a:+p.amt||0})));
  const mrev=pays.filter(p=>p.d.startsWith(ym)).reduce((s,p)=>s+p.a,0),dueAll=J.reduce((s,j)=>s+Math.max(0,due(j)),0);
  const days=[...Array(7)].map((_,i)=>{const d=new Date(Date.now()-new Date().getTimezoneOffset()*6e4-(6-i)*864e5).toISOString().slice(0,10);return{l:d.slice(8),v:pays.filter(p=>p.d===d).reduce((s,p)=>s+p.a,0)}}),mx=Math.max(1,...days.map(x=>x.v));
- let att='';if(attYM===ym&&S.emps.length){const c={P:0,H:0,A:0,O:0};S.emps.forEach(e=>{const v=(S.att[e.id]||{})[t.slice(8)];if(v)c[v]++});
-  att=`<div class="card"><h3 style="margin-top:0">Today's attendance</h3><div class="g2"><span class="ok">Present ${c.P+c.H/2}</span><span class="bad">Absent ${c.A}</span><span class="mut">Off ${c.O}</span><span class="mut">Not marked ${S.emps.length-c.P-c.H-c.A-c.O}</span></div></div>`}
+ let att='';if(attYM===ym&&S.emps.length){const c={P:0,H:0,A:0,O:0};S.emps.forEach(e=>{const v=isHol(t)?'P':(S.att[e.id]||{})[t.slice(8)];if(v)c[v]++});
+  att=`<div class="card"><h3 style="margin-top:0">Today's attendance${isHol(t)?' (holiday)':''}</h3><div class="g2"><span class="ok">Present ${c.P+c.H/2}</span><span class="bad">Absent ${c.A}</span><span class="mut">Off ${c.O}</span><span class="mut">Not marked ${S.emps.length-c.P-c.H-c.A-c.O}</span></div></div>`}
  const dues=J.filter(j=>due(j)>0).sort((a,b)=>due(b)-due(a)).slice(0,5);
  const isRc=x=>x.ppfType==='Recheck'||x.cType==='Recheck',rc=J.filter(j=>!isRc(j)&&j.reg&&j.outDate&&(j.work||[]).some(w=>w==='PPF'||w==='Ceramic')&&Math.floor((Date.parse(t)-Date.parse(j.outDate))/864e5)>=10&&!J.some(x=>isRc(x)&&(x.reg||'')===j.reg&&(x.inDate||'')>=j.outDate)).sort((a,b)=>a.outDate.localeCompare(b.outDate)).slice(0,5);
  return`<div class="card"><div class="mut">${new Date().toLocaleDateString('en',{weekday:'long',day:'numeric',month:'long'})}</div><div class="hi">${gr}, ${esc(me.id)}</div></div>
@@ -157,6 +157,10 @@ function lockBar(){const L=S.locks[attDate],t=today(),can=attDate<t||(attDate===
  if(L)return`<div class="lockbar"><span><b>Day locked</b><br><small class="mut">by ${esc(L.by)} at ${new Date(L.at).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'})}${main?' · you can still edit':''}</small></span>${main?`<button class="btn g sm" onclick="sure(this,unlockDay)">Unlock</button>`:''}</div>`;
  if(can)return`<div class="lockbar"><span class="mut">${un?un+' not marked yet. ':'Everyone is marked. '}Recheck, then lock this day.</span><button class="btn sm" onclick="sure(this,lockDay)">Lock day</button></div>`;
  return`<p class="mut">Half day is shown after 12:00 and Lock day after 15:00.</p>`}
+function holBar(){const on=isHol(attDate),blocked=!!S.locks[attDate]&&me.role!=='main';
+ if(on)return`<div class="lockbar"><span><b>Holiday</b><br><small class="mut">Everyone counts as present on this day.</small></span>${blocked?'':`<button class="btn g sm" onclick="sure(this,toggleHol)">Remove</button>`}</div>`;
+ return blocked?'':`<div class="row" style="margin:6px 0"><button class="btn g sm" onclick="sure(this,toggleHol)">Mark this day as holiday</button></div>`}
+function toggleHol(){const on=isHol(attDate);sd(doc(db,'lists','main'),{holidays:on?arrayRemove(attDate):arrayUnion(attDate)},{merge:true}).catch(e=>toast('Could not save: '+e.code))}
 function lockDay(){sd(doc(db,'attLocks',attDate),{date:attDate,by:me.id,at:Date.now()}).catch(e=>toast('Could not lock: '+e.code))}
 function unlockDay(){dd(doc(db,'attLocks',attDate)).catch(e=>toast('Could not unlock: '+e.code))}
 function origJob(j){const r=(j.reg||'').trim().toLowerCase();if(!r)return null;
@@ -201,24 +205,28 @@ function render(){if(!ready)return;if(!me)return loginView();
 
 /* ---------- attendance ---------- */
 const OFFMAX=e=>e.sex==='F'?5:4;
-const monthCount=e=>Object.values(S.att[e.id]||{}).filter(v=>v==='O').length;
-const cnt=(e,k)=>Object.values(S.att[e.id]||{}).filter(v=>v===k).length;
+const isHol=d=>(S.lists.holidays||[]).includes(d);
+const ymNow=()=>attYM||attDate.slice(0,7);
+const monthHolN=()=>(S.lists.holidays||[]).filter(d=>d.startsWith(ymNow())).length;
+const dayVals=e=>Object.entries(S.att[e.id]||{}).filter(([d])=>!isHol(ymNow()+'-'+d)).map(([,v])=>v);
+const monthCount=e=>dayVals(e).filter(v=>v==='O').length;
+const cnt=(e,k)=>dayVals(e).filter(v=>v===k).length;
 function vAtt(){
  if(!S.emps.length)return`<div class="card"><h2>Add staff first</h2><p class="mut">Open the Staff tab, enter the employee name, choose Male or Female and add.</p><button class="btn" onclick="go('set')">Add staff</button></div>`;
- const _t=today(),canHalf=attDate<_t||(attDate===_t&&new Date().getHours()>=12),locked=!!S.locks[attDate]&&me.role!=='main';
- return`<div class="card"><label>Date</label><input type="date" value="${attDate}" onchange="setAttDate(this.value)"><p class="mut">Totals are for ${new Date(attDate.slice(0,7)+'-01T00:00').toLocaleString('en',{month:'long',year:'numeric'})}, counting the days marked so far.</p>${lockBar()}
+ const _t=today(),canHalf=attDate<_t||(attDate===_t&&new Date().getHours()>=12),locked=(!!S.locks[attDate]&&me.role!=='main')||isHol(attDate);
+ return`<div class="card"><label>Date</label><input type="date" value="${attDate}" onchange="setAttDate(this.value)"><p class="mut">Totals are for ${new Date(attDate.slice(0,7)+'-01T00:00').toLocaleString('en',{month:'long',year:'numeric'})}, counting the days marked so far.</p>${holBar()}${lockBar()}
  ${S.emps.map(e=>{const v=(S.att[e.id]||{})[attDate.slice(8)]||'',c=monthCount(e),mx=OFFMAX(e);
- return`<div class="emp"><div class="n">${esc(e.name)}<small>${[e.sex==='F'?'Female':'Male',e.role].filter(Boolean).map(esc).join(' · ')}</small><small class="${c>mx?'bad':''}">Off ${c}/${mx}${c>mx?' (limit exceeded)':''}</small><small><span class="ok">Present ${cnt(e,'P')+cnt(e,'H')/2}${cnt(e,'H')?' ('+cnt(e,'H')+' half)':''}</span> · <span class="bad">Absent ${cnt(e,'A')}</span></small></div>
+ return`<div class="emp"><div class="n">${esc(e.name)}<small>${[e.sex==='F'?'Female':'Male',e.role].filter(Boolean).map(esc).join(' · ')}</small><small class="${c>mx?'bad':''}">Off ${c}/${mx}${c>mx?' (limit exceeded)':''}</small><small><span class="ok">Present ${cnt(e,'P')+cnt(e,'H')/2+monthHolN()}${cnt(e,'H')?' ('+cnt(e,'H')+' half)':''}${monthHolN()?' · incl. '+monthHolN()+' holiday':''}</span> · <span class="bad">Absent ${cnt(e,'A')}</span></small></div>
  <div class="seg">${['P',...(canHalf||v==='H'?['H']:[]),'A','O'].map(k=>`<button class="${k}${v===k?' on':''}" ${locked?'disabled':''} onclick="mark('${e.id}','${k}')">${k==='O'?'Off':k==='H'?'½':k}</button>`).join('')}</div></div>`}).join('')}</div>
  <div class="row"><button class="btn g" onclick="expAtt('xlsx')">Excel export</button><button class="btn g" onclick="expAtt('pdf')">PDF export</button></div>
  <p class="mut">P = Present, ½ = half day (shown after 12:00), A = Absent, Off = weekly off. Lock day is shown after 15:00; once locked, only the main admin can edit that day. Male staff get 4 offs and female staff 5 offs per month.</p>`}
 function setAttDate(v){attDate=v||today();subAtt();render()}
-function mark(id,k){if(S.locks[attDate]&&me.role!=='main'){toast('This day is locked. Only the main admin can change it.');return}const ym=attDate.slice(0,7),d=attDate.slice(8),cur=(S.att[id]||{})[d];
+function mark(id,k){if(isHol(attDate)){toast('This day is a holiday. Everyone counts as present.');return}if(S.locks[attDate]&&me.role!=='main'){toast('This day is locked. Only the main admin can change it.');return}const ym=attDate.slice(0,7),d=attDate.slice(8),cur=(S.att[id]||{})[d];
  sd(doc(db,'attendance',ym+'_'+id),{ym,empId:id,days:{[d]:cur===k?deleteField():k}},{merge:true}).catch(e=>toast('Could not save: '+e.code))}
 function expAtt(f){const ym=attDate.slice(0,7),n=new Date(+ym.slice(0,4),+ym.slice(5),0).getDate();
  const head=['Name','Type','Role',...Array.from({length:n},(_,i)=>i+1),'P','Half','A','Off'];
- const rows=S.emps.map(e=>{const m=S.att[e.id]||{},v=Object.values(m);
-  return[e.name,e.sex==='F'?'Female':'Male',e.role||'',...Array.from({length:n},(_,i)=>(m[String(i+1).padStart(2,'0')]||'').replace('H','½')),v.filter(x=>x==='P').length,v.filter(x=>x==='H').length,v.filter(x=>x==='A').length,v.filter(x=>x==='O').length]});
+ const rows=S.emps.map(e=>{const m=S.att[e.id]||{},hs=new Set((S.lists.holidays||[]).filter(d=>d.startsWith(ym)).map(d=>d.slice(8))),v=Object.entries(m).filter(([d])=>!hs.has(d)).map(([,x])=>x);
+  return[e.name,e.sex==='F'?'Female':'Male',e.role||'',...Array.from({length:n},(_,i)=>(hs.has(String(i+1).padStart(2,'0'))?'HOL':(m[String(i+1).padStart(2,'0')]||'').replace('H','½'))),v.filter(x=>x==='P').length+hs.size,v.filter(x=>x==='H').length,v.filter(x=>x==='A').length,v.filter(x=>x==='O').length]});
  out('Attendance '+ym,head,rows,f,'l',6)}
 
 /* ---------- jobs ---------- */
@@ -372,7 +380,7 @@ setInterval(()=>{if(me&&tab==='att'&&!typing())render()},60000);
 document.addEventListener('input',e=>{const t=e.target;if(!(t.closest&&(t.closest('#ovc')||t.id==='en'||t.id==='sn')))return;
  if(t.tagName==='TEXTAREA'||(t.tagName==='INPUT'&&(!t.type||t.type==='text'))){const a=t.selectionStart,b=t.selectionEnd,u=t.value.toUpperCase();if(u!==t.value){t.value=u;try{t.setSelectionRange(a,b)}catch(x){}}}});
 
-Object.assign(window,{lockDay,unlockDay,addShow,delShow,pickProv,closePv,savePv,setJf,toggleTheme,waJob,waId,calcLeft,certJob,editEmp,expPPF,toast,sure,clearNA,login,logout,go,render,setAttDate,mark,expAtt,openJob,setJq,tg,te,autofill,collect,saveJob,delJob,closeJob,addPh,rmPh,invoice,setGrp,expJobs,expSum,addEmp,delEmp,addAdmin,delAdmin,dueUp,formRender,today,cjRef:()=>cj});
+Object.assign(window,{toggleHol,lockDay,unlockDay,addShow,delShow,pickProv,closePv,savePv,setJf,toggleTheme,waJob,waId,calcLeft,certJob,editEmp,expPPF,toast,sure,clearNA,login,logout,go,render,setAttDate,mark,expAtt,openJob,setJq,tg,te,autofill,collect,saveJob,delJob,closeJob,addPh,rmPh,invoice,setGrp,expJobs,expSum,addEmp,delEmp,addAdmin,delAdmin,dueUp,formRender,today,cjRef:()=>cj});
 Object.defineProperty(window,'cj',{get:()=>cj});
 if(NOCFG){ready=true;render()}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
